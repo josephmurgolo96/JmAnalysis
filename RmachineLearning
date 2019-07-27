@@ -1,0 +1,473 @@
+#######Simple Linear Regression####
+View(dataset)
+dataset = read.csv(file.choose())
+
+library(caTools)
+set.seed(123)
+split = sample.split(dataset$Salary, SplitRatio = 2/3)
+training_set = subset(dataset, split == TRUE)
+test_set = subset(dataset, split == FALSE)
+
+# Feature Scaling
+# training_set = scale(training_set)
+# test_set = scale(test_set)
+
+regressor = lm(formula = Salary ~ YearsExperience,
+               data = training_set)
+summary(regressor)
+y_pred = predict(regressor, newdata = test_set)
+
+library(ggplot2)
+ggplot() +
+  geom_point(aes(x = training_set$YearsExperience, y = training_set$Salary),
+             colour = 'red') +
+  geom_line(aes(x = training_set$YearsExperience, y = predict(regressor, newdata = training_set)),
+            colour = 'blue') +
+  geom_smooth()+
+  ggtitle('Salary vs Experience') +
+  xlab('Years of experience') +
+  ylab('Salary')
+
+predict.lm(regressor,training_set$YearsExperience <- c(1,2))
+?predict
+library(ggplot2)
+ggplot() +
+  geom_point(aes(x = test_set$YearsExperience, y = test_set$Salary),
+             colour = 'red') +
+  geom_line(aes(x = training_set$YearsExperience, y = predict(regressor, newdata = training_set)),
+            colour = 'blue') +
+  ggtitle('Salary vs Experience (Test set)') +
+  xlab('Years of experience') +
+  ylab('Salary')
+
+ggplot() +
+  geom_point(aes(x = training_set$YearsExperience, y = training_set$Salary),
+             colour = 'red') +
+  geom_line(aes(x = training_set$YearsExperience, y = predict(regressor, newdata = training_set)),
+            colour = 'blue') +
+  ggtitle('Salary vs Experience (Training set)') +
+  xlab('Years of experience') +
+  ylab('Salary')
+
+
+
+
+######## Multiple Linear#########
+
+Companies <- read.csv(file.choose())
+View(Companies)
+View(test_set)
+Companies$State <- factor(Companies$State , levels = c("New York","California","Florida"), labels = c(1,2,3))
+
+library(caTools)
+set.seed(123)
+split = sample.split(Companies$Profit, SplitRatio = .8)
+training_set = subset(Companies, split == TRUE)
+test_set = subset(Companies, split == FALSE)
+
+#Regression building, test all variables first then narrow it down using P value
+regressor <- lm(formula = Profit ~ ., data=training_set)
+regressor <- lm(formula = Profit ~ R.D.Spend, data=training_set)
+summary(regressor)
+y_pred = predict(regressor, newdata = test_set)
+
+
+
+
+
+########## Polynomial Regression ########
+Future_Sal <- read.csv(file.choose())
+View(Future_Sal)
+Future_Sal <- Future_Sal[,2:3]
+regressorLin <- lm(formula = Salary~., data=Future_Sal)
+summary(regressorLin)
+
+ggplot() + geom_point(aes(x=Future_Sal$Level,y=Future_Sal$Salary),color='Red')+  geom_line(aes(x=Future_Sal$Level,y=predict(regressorLin,newdata=Future_Sal)),color='Blue')+ ggtitle('Truth or Bluff (LinReg)')
++ xlab('Levels')
++ ylab('Salary')
+
+######Polynomial########
+Future_Sal$Level2 <- (Future_Sal$Level)^2
+Future_Sal$Level3 <- (Future_Sal$Level)^3
+Future_Sal$Level4 <- (Future_Sal$Level)^4
+Future_Sal$Level5 <- (Future_Sal$Level)^5
+Polyregressor <- lm(formula = Salary~.,data = Future_Sal)
+ggplot()+geom_point(aes(x=Future_Sal$Level,y=Future_Sal$Salary),color='Red')+  geom_smooth(aes(x=Future_Sal$Level,y=predict(Polyregressor,newdata=Future_Sal)),color='Blue')+ggtitle('Truth or Bluff')+xlab('Levels')+ylab('Salary')
+
+y_predLin = predict(regressorLin, data.frame(Level=6.5))
+y_predPoly = predict(Polyregressor,data.frame(Level=6.5,
+                                              Level2=6.5^2,
+                                              Level3=6.5^3,
+                                              Level4=6.5^4,
+                                              Level5=6.5^5))
+
+
+
+
+##### SVR Regression (Support Vector Regression) ######
+install.packages('e1071')
+?svm
+regressor <- svm(formula= Salary~., data=Future_Sal[,1:2], type='eps-regression')
+summary(regressor)
+y_predSVM = predict(regressor, data.frame(Level=6.5))
+#graph the same way up there to observe, outliers are excluded from the model basically
+
+
+
+##### Decision Tree ######
+Data <- read.csv(file.choose())
+View(Data)
+Data <- Data[,2:3]
+install.packages('rpart')
+?rpart
+regressor <- rpart(formula= Salary~.,data = Data)
+y_predDT <- predict(regressor, data.frame(Level=6.5))
+ggplot()+geom_point(aes(x=Data$Level,y=Data$Salary),color='Red')+  geom_line(aes(x=Data$Level,y=predict(regressor,newdata=Data)),color='Blue')+ggtitle('Truth or Bluff')+xlab('Levels')+ylab('Salary')
+regressor <- rpart(formula= Salary~., data = Data, control = rpart.control(minsplit=1)  )
+#now regraph and it looks jagged
+
+#need higher resolution graph, the xgrid creates the correct leaf sizes
+x_grid <- seq(min(Data$Level),max(Data$Level), 0.1)
+#looking at the graph, the predicitions are clear cause its linear
+ggplot()+geom_point(aes(x=Data$Level,y=Data$Salary),color='Red') +  geom_line(aes(x=x_grid,y=predict(regressor,newdata=data.frame(Level=x_grid))),color='Blue')+ggtitle('Truth or Bluff')+xlab('Levels')+ylab('Salary')
+
+
+
+
+
+###### Random Forrest ########
+install.packages('randomForest')
+library('randomForest')
+DataRF <- read.csv(file.choose())
+?randomForest
+set.seed(1234)
+regressor <- randomForest(x=Data[1], y=Data$Salary, ntree=500)
+x_grid <- seq(min(Data$Level),max(Data$Level), 0.01)
+ggplot()+geom_point(aes(x=Data$Level,y=Data$Salary),color='Red')+  geom_line(aes(x=x_grid,y=predict(regressor,newdata=data.frame(Level=x_grid))),color='Blue')+ggtitle('Truth or Bluff')+xlab('Levels')+ylab('Salary')
+y_pred <- predict(regressor,data.frame(Level=6.5))
+
+
+
+
+
+
+
+
+
+###### Logisitic Regression #####
+Data <- read.csv(file.choose())
+Data <- Data[,3:5]
+View(Data)
+
+library(caTools)
+set.seed(123)
+split = sample.split(Data$Purchased, SplitRatio = .75)
+training_set = subset(Data, split == TRUE)
+test_set = subset(Data, split == FALSE)
+
+
+training_set[,1:2] = scale(training_set[,1:2])
+test_set[,1:2] = scale(test_set[,1:2])
+
+View(training_set)
+
+?glm
+classifier <- glm(formula=training_set$Purchased~.,family=binomial,data=training_set)
+
+prob_predictions <- predict(classifier,type='response', newdata = test_set[-3])
+prob_predictions
+y_pred <- ifelse(prob_predictions>.5, 1,0)
+
+ConMat <- table(test_set[,3],y_pred)
+
+install.packages('ElemStatLearn')
+library('ElemStatLearn')
+
+set =test_set 
+X1= seq(min(set[,1])-1,max(set[,1])+1,by=.01) 
+X2= seq(min(set[,2])-1,max(set[,2])+1,by=.01) 
+grid_set = expand.grid(X1,X2) 
+colnames(grid_set) <- c('Age', 'EstimatedSalary') 
+prob_set <- predict(classifier, type='response',newdata = grid_set) 
+y_grid <- ifelse(prob_set>.5,1,0) 
+plot(set[,-3], 
+main= 'Logistic Regression',
+xlab='Age',
+ylab='EstimatedSalary',
+xlim=range(X1),
+ylim=range(X2))
+
+contour(X1,X2,matrix(as.numeric(y_grid)),length(X1),length(X2),add=TRUE)
+points(grid_set,pch='.',col=ifelse(y_grid==1,'springgreen3','tomato')) #background
+points(set,pch=21 ,col=ifelse(set[,3] ==1 ,'green4','red3')) #points
+
+
+#### KNN K-Nearest Neighbors #####
+
+Data <- read.csv(file.choose())
+Data <- Data[,3:5]
+View(Data)
+
+library(caTools)
+set.seed(123)
+split = sample.split(Data$Purchased, SplitRatio = .75)
+training_set = subset(Data, split == TRUE)
+test_set = subset(Data, split == FALSE)
+
+
+
+training_set[-3] = scale(training_set[-3])
+test_set[-3] = scale(test_set[-3])
+
+View(training_set)
+
+y_pred <- knn(train=training_set[,-3] , test=test_set[,-3], cl=training_set[,3], k=5)
+
+ConMat <- table(test_set[,3],y_pred)
+
+install.packages('ElemStatLearn')
+library('ElemStatLearn')
+
+set =test_set 
+X1= seq(min(set[,1])-1, max(set[,1])+1, by=.01) 
+X2= seq(min(set[,2])-1, max(set[,2])+1, by=.01) 
+grid_set = expand.grid(X1,X2) #Makes imaginary data points to predict
+colnames(grid_set) <- c('Age', 'EstimatedSalary') 
+  
+y_grid = knn(train=training_set[,-3] , test=grid_set, cl=training_set[,3], k=5) 
+plot(set[,-3], 
+main= 'KNN',
+xlab='Age',
+ylab='EstimatedSalary',
+xlim=range(X1),
+ylim=range(X2))
+
+contour(X1,X2,matrix(as.numeric(y_grid),length(X1),length(X2)),add=TRUE)
+points(grid_set,pch='.',col=ifelse(y_grid==1,'springgreen3','tomato')) 
+points(set,pch=21 ,col=ifelse(set[,3] ==1 ,'green4','red3')) 
+
+#the points are the actual data, the background color is the prediction area
+#what class it should belong to
+
+
+
+##### Kernel SVM (most accurate one)########
+
+Data <- read.csv(file.choose())
+Data <- Data[,3:5]
+View(Data)
+
+#Splitting Data
+library(caTools)
+set.seed(123)
+split = sample.split(Data$Purchased, SplitRatio = .75)
+training_set = subset(Data, split == TRUE)
+test_set = subset(Data, split == FALSE)
+
+
+#Feature Scaling
+#only scale the non categorical variables, it normalizes them
+
+training_set[-3] = scale(training_set[-3])
+test_set[-3] = scale(test_set[-3])
+
+#Classifier, interchange kernel argument
+classifier = svm(formula = Purchased ~., data=training_set, type= 'C-classification', kernel= 'radial')
+?svm
+
+
+#predicting test results
+y_pred <- predict(classifier, newdata=test_set[-3])
+
+
+#Top row is your predicition, left column is the Actual
+ConMat <- table(test_set[,3],y_pred)
+
+#Visualizing everything
+install.packages('ElemStatLearn')
+library('ElemStatLearn')
+
+set =test_set 
+X1= seq(min(set[,1])-1, max(set[,1])+1, by=.01) 
+X2= seq(min(set[,2])-1, max(set[,2])+1, by=.01) 
+grid_set = expand.grid(X1,X2) 
+colnames(grid_set) <- c('Age', 'EstimatedSalary') 
+
+y_grid = predict(classifier,grid_set) 
+plot(set[,-3],main= 'SVM',xlab='Age', xlim=range(X1), ylab='EstimatedSalary',ylim=range(X2)  ) 
+
+
+contour(X1,X2,matrix(as.numeric(y_grid),length(X1),length(X2)),add=TRUE)
+points(grid_set,pch='.',col=ifelse(y_grid==1,'springgreen3','tomato')) #background
+points(set,pch=21 ,col=ifelse(set[,3] ==1 ,'green4','red3')) #points
+
+
+
+
+###### Naive Bayes #######
+
+Data <- read.csv(file.choose())
+Data <- Data[,3:5]
+View(Data)
+View(training_set)
+
+#Splitting Data
+library(caTools)
+set.seed(123)
+split = sample.split(Data$Purchased, SplitRatio = .75)
+training_set = subset(Data, split == TRUE)
+test_set = subset(Data, split == FALSE)
+
+#factor your dependent varibale 
+Data$Purchased <- factor(Data$Purchased, levels=c(0,1))
+
+#Feature Scaling
+#only scale the non categorical variables, it normalizes them
+
+training_set[-3] = scale(training_set[-3])
+test_set[-3] = scale(test_set[-3])
+
+#Classifier
+library('e1071')
+classifier = naiveBayes(x=training_set[-3],y=training_set$Purchased)
+?naiveBayes
+
+
+#predicting test results
+y_pred <- predict(classifier, newdata=test_set[-3])
+
+ConMat <- table(test_set[,3],y_pred)
+
+#Visualizing everything
+install.packages('ElemStatLearn')
+library('ElemStatLearn')
+
+set =test_set 
+X1= seq(min(set[,1])-1, max(set[,1])+1, by=.1) 
+X2= seq(min(set[,2])-1, max(set[,2])+1, by=.1) 
+grid_set = expand.grid(X1,X2) 
+colnames(grid_set) <- c('Age', 'EstimatedSalary') 
+
+
+y_grid = predict(classifier,grid_set)
+plot(set[,-3],main= 'Naive',xlab='Age', xlim=range(X1), ylab='EstimatedSalary',ylim=range(X2)  ) 
+
+
+contour(X1,X2,matrix(as.numeric(y_grid),length(X1),length(X2)),add=TRUE)
+points(grid_set,pch='.',col=ifelse(y_grid==1,'springgreen3','tomato')) #background
+points(set,pch=21 ,col=ifelse(set[,3] ==1 ,'green4','red3')) #points
+
+
+
+####### Decision Tree Classifier ######
+
+Data <- read.csv(file.choose())
+Data <- Data[,3:5]
+View(Data)
+
+
+#Splitting Data
+library(caTools)
+set.seed(123)
+split = sample.split(Data$Purchased, SplitRatio = .75)
+training_set = subset(Data, split == TRUE)
+test_set = subset(Data, split == FALSE)
+
+Data$Purchased <- factor(Data$Purchased, levels=c(0,1))
+
+#Feature Scaling
+
+training_set[-3] = scale(training_set[-3])
+test_set[-3] = scale(test_set[-3])
+
+#Classifier
+library('e1071')
+library('rpart')
+classifier = rpart(formula= Purchased~.,data=training_set)
+?rpart
+
+
+#predicting test results, the type transforms probabilities to results of zero or one
+y_pred <- predict(classifier, newdata=test_set[-3],type='class')
+
+
+ConMat <- table(test_set[,3],y_pred)
+
+#Visualizing everything
+install.packages('ElemStatLearn')
+library('ElemStatLearn')
+
+set =test_set 
+X1= seq(min(set[,1])-1, max(set[,1])+1, by=.01) 
+X2= seq(min(set[,2])-1, max(set[,2])+1, by=.01) 
+grid_set = expand.grid(X1,X2) 
+colnames(grid_set) <- c('Age', 'EstimatedSalary') 
+
+
+y_grid = predict(classifier,grid_set,type='class') 
+plot(set[,-3],main= 'Naive',xlab='Age', xlim=range(X1), ylab='EstimatedSalary',ylim=range(X2)  ) 
+
+
+contour(X1,X2,matrix(as.numeric(y_grid),length(X1),length(X2)),add=TRUE)
+points(grid_set,pch='.',col=ifelse(y_grid==1,'springgreen3','tomato')) #background
+points(set,pch=21 ,col=ifelse(set[,3] ==1 ,'green4','red3')) #points
+
+
+#plotting the decision tree, need to rerun the setup code WITHOUT feature scaling
+plot(classifier)
+text(classifier)
+
+
+
+
+##### Random Forrest Classifier #####
+
+Data <- read.csv(file.choose())
+Data <- Data[,3:5]
+View(Data)
+View(training_set)
+
+#Splitting Data
+library(caTools)
+set.seed(123)
+split = sample.split(Data$Purchased, SplitRatio = .75)
+training_set = subset(Data, split == TRUE)
+test_set = subset(Data, split == FALSE)
+
+#factor your dependent varibale 
+Data$Purchased <- factor(Data$Purchased, levels=c(0,1))
+
+#Feature Scaling
+
+
+training_set[-3] = scale(training_set[-3])
+test_set[-3] = scale(test_set[-3])
+
+library('randomForest')
+classifier = randomForest(x=training_set[-3],y=training_set$Purchased,ntree = 10)
+?randomForest
+
+
+#predicting test results
+y_pred <- predict(classifier, newdata=test_set[-3])
+
+ConMat <- table(test_set[,3],y_pred)
+
+#Visualizing everything
+#each point is user according to age and salary
+install.packages('ElemStatLearn')
+library('ElemStatLearn')
+
+set =training_set
+X1= seq(min(set[,1])-1, max(set[,1])+1, by=.01) 
+X2= seq(min(set[,2])-1, max(set[,2])+1, by=.01) 
+grid_set = expand.grid(X1,X2) 
+colnames(grid_set) <- c('Age', 'EstimatedSalary') 
+
+y_grid = predict(classifier,grid_set) 
+plot(set[,-3],main= 'Random Forest',xlab='Age', xlim=range(X1), ylab='EstimatedSalary',ylim=range(X2)  ) 
+
+
+contour(X1,X2,matrix(as.numeric(y_grid),length(X1),length(X2)),add=TRUE)
+points(grid_set,pch='.',col=ifelse(y_grid==1,'springgreen3','tomato')) #background
+points(set,pch=21 ,col=ifelse(set[,3] ==1 ,'green4','red3')) #points
